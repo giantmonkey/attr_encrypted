@@ -1,20 +1,19 @@
 if defined?(ActiveRecord::Base)
   module AttrEncrypted
     module Adapters
+      module ActiveRecordReload
+        def reload(*args, &block)
+          result = super(*args, &block)
+          self.class.encrypted_attributes.keys.each do |attribute_name|
+            instance_variable_set("@#{attribute_name}", nil)
+          end
+          result
+        end
+      end
+
       module ActiveRecord
         def self.extended(base) # :nodoc:
           base.class_eval do
-
-            # https://github.com/attr-encrypted/attr_encrypted/issues/68
-            alias_method :reload_without_attr_encrypted, :reload
-            def reload(*args, &block)
-              result = reload_without_attr_encrypted(*args, &block)
-              self.class.encrypted_attributes.keys.each do |attribute_name|
-                instance_variable_set("@#{attribute_name}", nil)
-              end
-              result
-            end
-
             attr_encrypted_options[:encode] = true
 
             class << self
@@ -136,4 +135,5 @@ if defined?(ActiveRecord::Base)
 
   ActiveRecord::Base.extend AttrEncrypted
   ActiveRecord::Base.extend AttrEncrypted::Adapters::ActiveRecord
+  ActiveRecord::Base.prepend AttrEncrypted::Adapters::ActiveRecordReload
 end
